@@ -61,6 +61,7 @@ export default function RuangSelect({
         value={value ?? ""}
         onChange={(e) => onChange?.(e.target.value)}
         disabled={!unitId || loading}
+        required
       >
         <option value="" disabled>
           {!unitId ? "Pilih Unit dulu" : loading ? "Memuat Ruangan…" : "Pilih Ruangan Meeting"}

@@ -18,7 +18,6 @@ export default function Page() {
         if (!res.ok) throw new Error("Gagal memuat data dari API");
         const data = await res.json();
         console.log(data.data)
-        console.log(data.data[0].konsumsi[0].konsumsi.name)
         setMeetings(data.data);
       } catch (err) {
         console.error("Error:", err);

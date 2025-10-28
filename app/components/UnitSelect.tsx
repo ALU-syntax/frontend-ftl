@@ -41,6 +41,7 @@ export default function UnitSelect({
         value={value ?? ""}
         onChange={(e) => onChange?.(e.target.value)}
         disabled={loading}
+        required
       >
         <option value="" disabled>
           {loading ? "Memuat Unit..." : "Pilih Unit"}

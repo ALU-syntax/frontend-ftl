@@ -1,13 +1,82 @@
 "use client";
 import "../../globals.css";
 import UnitSelect from "../../components/UnitSelect";
-import RuangSelect from "../../components/RuangSelect"; 
+import RuangSelect from "../../components/RuangSelect";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function CreatePesanRuanganPage() {
+  const router = useRouter();
   const [unitId, setUnitId] = useState<string>("");
   const [ruangId, setRuangId] = useState<string>("");
   const [kapasitas, setKapasitas] = useState<string>("");
+  const [tanggal, setTanggal] = useState("");
+  const [waktuMulai, setWaktuMulai] = useState("");
+  const [waktuSelesai, setWaktuSelesai] = useState("");
+  const [jumlahPeserta, setJumlahPeserta] = useState(1);
+  const [konsumsi, setKonsumsi] = useState<string[]>([]);
+  const [nominalKonsumsi, setNominalKonsumsi] = useState("");
+
+  // toggle checkbox konsumsi
+  const handleCheckbox = (value: string) => {
+    setKonsumsi((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    );
+  };
+
+  // optional: validasi sederhana time range
+  const isTimeRangeValid = () => {
+    if (!waktuMulai || !waktuSelesai) return true;
+    return waktuSelesai >= waktuMulai;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!isTimeRangeValid()) {
+      alert("Waktu selesai harus >= waktu mulai.");
+      return;
+    }
+    if (!unitId || !ruangId) {
+      alert("Mohon pilih Unit dan Ruangan terlebih dahulu.");
+      return;
+    }
+
+    const payload = {
+      unitId: Number(unitId),
+      ruanganId: Number(ruangId),
+      tgl_rapat: tanggal,             // "YYYY-MM-DD"
+      waktu_mulai: waktuMulai,        // "HH:MM"
+      waktu_selesai: waktuSelesai,    // "HH:MM"
+      jumlah_peserta: Number(jumlahPeserta),
+      konsumsi,                       // ["Snack Siang", ...]
+      nominal_konsumsi: Number(nominalKonsumsi),
+    };
+
+    try {
+      const res = await fetch("http://localhost:3001/api/rapat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.message || `Gagal menyimpan (status ${res.status})`);
+      }
+
+      const data = await res.json();
+      console.log("Berhasil:", data);
+      // alert("Data berhasil disimpan!");
+      router.push("/");   
+      // reset ringan (opsional)
+      // setTanggal(""); setWaktuMulai(""); setWaktuSelesai(""); setJumlahPeserta(1); setKonsumsi([]); setNominalKonsumsi("");
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Terjadi kesalahan saat menyimpan.");
+    }
+  };
+
   return (
     <div className="app">
       {/* Topbar */}
@@ -17,9 +86,15 @@ export default function CreatePesanRuanganPage() {
           <span className="brand-text">iMeeting</span>
         </div>
         <div className="topbar__actions">
-          <button className="icon-btn" aria-label="notifications"><BellIcon /></button>
+          <button className="icon-btn" aria-label="notifications">
+            <BellIcon />
+          </button>
           <div className="user">
-            <img className="avatar" src="https://i.pravatar.cc/40?img=12" alt="John Doe" />
+            <img
+              className="avatar"
+              src="https://i.pravatar.cc/40?img=12"
+              alt="John Doe"
+            />
             <span className="user__name">John Doe</span>
             <ChevronDown />
           </div>
@@ -29,18 +104,30 @@ export default function CreatePesanRuanganPage() {
       <div className="layout">
         {/* Sidebar */}
         <aside className="sidebar">
-          <a className="sidebar__item" href="/" aria-label="Home"><HomeIcon /></a>
-          <a className="sidebar__item active" href="/pesan-ruangan" aria-label="Pesan Ruangan"><UserIcon /></a>
+          <a className="sidebar__item" href="/" aria-label="Home">
+            <HomeIcon />
+          </a>
+          <a
+            className="sidebar__item active"
+            href="/pesan-ruangan"
+            aria-label="Pesan Ruangan"
+          >
+            <UserIcon />
+          </a>
         </aside>
 
         {/* Content */}
         <main className="content">
           <div className="content__head">
-            <a className="ghost-btn" href="/pesan-ruangan" aria-label="Back"><ChevronLeft /></a>
+            <a className="ghost-btn" href="/pesan-ruangan" aria-label="Back">
+              <ChevronLeft />
+            </a>
             <div className="title-group">
               <h1 className="title">Ruang Meeting</h1>
               <nav className="breadcrumb">
-                <a href="/pesan-ruangan" className="crumb">Ruang Meeting</a>
+                <a href="/pesan-ruangan" className="crumb">
+                  Ruang Meeting
+                </a>
                 <span className="crumb-sep">›</span>
                 <span className="crumb current">Pesan Ruangan</span>
               </nav>
@@ -68,17 +155,25 @@ export default function CreatePesanRuanganPage() {
                     unitId={unitId}
                     value={ruangId}
                     onChange={setRuangId}
-                    onSelected={(ruang) => setKapasitas(ruang?.kapasitas ? `${ruang.kapasitas} Orang` : "")}
+                    onSelected={(ruang) =>
+                      setKapasitas(
+                        ruang?.kapasitas ? `${ruang.kapasitas} Orang` : ""
+                      )
+                    }
                     // apiBase="/api/ruang"   // gunakan ini jika pakai proxy Next.js
                   />
                 </div>
-
               </div>
 
               <div className="field full">
                 <label>Kapasitas Ruangan</label>
                 {/* <input className="input" placeholder="Kapasitas Ruangan" disabled value="20 Orang" /> */}
-                 <input className="input" placeholder="Kapasitas Ruangan" disabled value={kapasitas} />
+                <input
+                  className="input"
+                  placeholder="Kapasitas Ruangan"
+                  disabled
+                  value={kapasitas}
+                />
               </div>
             </div>
 
@@ -91,62 +186,108 @@ export default function CreatePesanRuanganPage() {
 
             <form
               className="form-grid three"
-              onSubmit={(e) => { e.preventDefault(); /* TODO: submit */ }}
+              // onSubmit={(e) => {
+              //   e.preventDefault(); /* TODO: submit */
+              // }}
+              onSubmit={handleSubmit}
             >
               <div className="field">
-                <label>Tanggal Rapat <span className="required">*</span></label>
+                <label>
+                  Tanggal Rapat <span className="required">*</span>
+                </label>
                 <div className="input-icon">
                   <CalendarIcon />
-                  <input type="date" className="input no-padding-left" required />
+                  <input
+                    type="date"
+                    className="input no-padding-left"
+                    required
+                    value={tanggal}
+                    onChange={(e) => setTanggal(e.target.value)}
+                  />
                 </div>
               </div>
 
               <div className="field">
                 <label>Pilihan Waktu Mulai</label>
-                <div className="select">
-                  <select defaultValue="">
-                    <option value="" disabled>Pilih Waktu Mulai</option>
-                    <option>08:00</option><option>09:00</option>
-                    <option>10:00</option><option>11:00</option>
-                  </select>
+                <div className="control">
+                  <input
+                    type="time"
+                    className="input-mulai"
+                    required
+                    value={waktuMulai}
+                    onChange={(e) => setWaktuMulai(e.target.value)}
+                  />
                 </div>
               </div>
 
               <div className="field">
                 <label>Waktu Selesai</label>
-                <div className="select">
-                  <select defaultValue="">
-                    <option value="" disabled>Pilih Waktu Selesai</option>
-                    <option>10:00</option><option>11:00</option>
-                    <option>12:00</option><option>13:00</option>
-                  </select>
+                <div className="control">
+                  <input
+                    type="time"
+                    className="input-selesai"
+                    required
+                    value={waktuSelesai}
+                    onChange={(e) => setWaktuSelesai(e.target.value)}
+                  />
                 </div>
+                {!isTimeRangeValid() && (
+                  <small className="text-danger">Waktu selesai harus lebih besar dari waktu mulai</small>
+                )}
               </div>
 
               <div className="field">
                 <label>Jumlah Peserta</label>
-                <input type="number" className="input" placeholder="Masukan Jumlah Peserta" min={1}/>
+                <input
+                  type="number"
+                  className="input"
+                  placeholder="Masukan Jumlah Peserta"
+                  min={1}
+                  required
+                  value={jumlahPeserta}
+                  onChange={(e) => setJumlahPeserta(Number(e.target.value))}
+                />
               </div>
 
               <fieldset className="field checkbox-group">
                 <legend>Jenis Konsumsi</legend>
-                <label className="check"><input type="checkbox" /> <span>Snack Siang</span></label>
-                <label className="check"><input type="checkbox" /> <span>Makan Siang</span></label>
-                <label className="check"><input type="checkbox" /> <span>Snack Sore</span></label>
+                {["Snack Siang", "Makan Siang", "Snack Sore"].map((label) => (
+                  <label className="check" key={label}>
+                    <input
+                      type="checkbox"
+                      value={label}
+                      checked={konsumsi.includes(label)}
+                      onChange={() => handleCheckbox(label)}
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
               </fieldset>
 
               <div className="field">
                 <label>Nominal Konsumsi</label>
                 <div className="input-group">
                   <span className="addon">Rp</span>
-                  <input className="input no-left-radius" placeholder="" inputMode="numeric" />
+                  <input
+                    type="number"
+                    className="input no-left-radius"
+                    placeholder="Masukan Nominal Konsumsi"
+                    required
+                    min={1}
+                    value={nominalKonsumsi}
+                    onChange={(e) => setNominalKonsumsi(e.target.value)}
+                  />
                 </div>
               </div>
 
               {/* Actions */}
               <div className="form-actions full">
-                <a href="/pesan-ruangan" className="btn danger ghost">Batal</a>
-                <button className="btn primary" type="submit">Simpan</button>
+                <a href="/" className="btn danger ghost">
+                  Batal
+                </a>
+                <button className="btn primary" type="submit">
+                  Simpan
+                </button>
               </div>
             </form>
           </section>
@@ -157,23 +298,124 @@ export default function CreatePesanRuanganPage() {
 }
 
 /* ====== Icons (inline SVG, pure CSS) ====== */
-function CalendarIcon(){
+function CalendarIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
     </svg>
   );
 }
 function Logo() {
   return (
-    <svg width="28" height="24" viewBox="0 0 28 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-      <path d="M2 18L8.5 2h6L6.5 22H2V18Z" fill="currentColor" opacity=".9"/>
-      <path d="M12 18L18.5 2h6L16.5 22H12V18Z" fill="currentColor"/>
+    <svg
+      width="28"
+      height="24"
+      viewBox="0 0 28 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path d="M2 18L8.5 2h6L6.5 22H2V18Z" fill="currentColor" opacity=".9" />
+      <path d="M12 18L18.5 2h6L16.5 22H12V18Z" fill="currentColor" />
     </svg>
   );
 }
-function BellIcon(){ return (<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5"/><path d="M9 21a3 3 0 0 0 6 0"/></svg>); }
-function ChevronDown(){ return (<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m6 9 6 6 6-6"/></svg>); }
-function ChevronLeft(){ return (<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m15 18-6-6 6-6"/></svg>); }
-function HomeIcon(){ return (<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 11l9-7 9 7"/><path d="M9 22V12h6v10"/></svg>); }
-function UserIcon(){ return (<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>); }
+function BellIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5" />
+      <path d="M9 21a3 3 0 0 0 6 0" />
+    </svg>
+  );
+}
+function ChevronDown() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+function ChevronLeft() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="m15 18-6-6 6-6" />
+    </svg>
+  );
+}
+function HomeIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="22"
+      height="22"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M3 11l9-7 9 7" />
+      <path d="M9 22V12h6v10" />
+    </svg>
+  );
+}
+function UserIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="22"
+      height="22"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M20 21a8 8 0 1 0-16 0" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
